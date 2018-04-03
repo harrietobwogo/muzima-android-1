@@ -13,6 +13,7 @@ package com.muzima.service;
 import android.util.Log;
 import com.muzima.MuzimaApplication;
 import com.muzima.api.model.Concept;
+import com.muzima.api.model.ConceptType;
 import com.muzima.api.model.Encounter;
 import com.muzima.api.model.Form;
 import com.muzima.api.model.Observation;
@@ -52,7 +53,7 @@ public class HTMLFormObservationCreator {
     private Patient patient;
     private Encounter encounter;
     private List<Observation> observations;
-    private String TAG = "HTMLFormObservationCreator";
+    private String TAG = HTMLFormObservationCreator.class.getSimpleName();
 
     public HTMLFormObservationCreator(MuzimaApplication muzimaApplication) {
         this.patientController = muzimaApplication.getPatientController();
@@ -166,7 +167,7 @@ public class HTMLFormObservationCreator {
     private Observation createObservation(String conceptName, String value) throws JSONException,
             ConceptController.ConceptFetchException, ConceptController.ConceptSaveException{
         try {
-            Concept concept = observationParserUtility.getConceptEntity(conceptName);
+            Concept concept = observationParserUtility.getConceptEntity(conceptName, observationParserUtility.isFormattedAsConcept(value));
             Observation observation = observationParserUtility.getObservationEntity(concept, value);
             observation.setEncounter(encounter);
             observation.setPerson(patient);

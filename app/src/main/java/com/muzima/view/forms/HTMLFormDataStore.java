@@ -27,26 +27,40 @@ import com.muzima.api.model.FormData;
 import com.muzima.api.model.Location;
 import com.muzima.api.model.Patient;
 import com.muzima.api.model.Provider;
+import com.muzima.api.model.SmartCardRecord;
 import com.muzima.controller.ConceptController;
 import com.muzima.controller.FormController;
 import com.muzima.controller.LocationController;
 import com.muzima.controller.ObservationController;
 import com.muzima.controller.MuzimaSettingController;
+import com.muzima.controller.PatientController;
 import com.muzima.controller.ProviderController;
+import com.muzima.controller.SmartCardController;
+import com.muzima.model.collections.IncompleteForms;
 import com.muzima.model.observation.Concepts;
+import com.muzima.model.observation.EncounterWithObservations;
+import com.muzima.model.observation.Encounters;
+import com.muzima.model.shr.kenyaemr.KenyaEmrShrModel;
 import com.muzima.scheduler.RealTimeFormUploader;
 import com.muzima.service.HTMLFormObservationCreator;
 import com.muzima.utils.Constants;
 import com.muzima.utils.StringUtils;
+import com.muzima.utils.smartcard.KenyaEmrShrMapper;
 import net.minidev.json.JSONValue;
 import org.json.JSONException;
 import com.muzima.controller.EncounterController;
 
+import java.text.DateFormat;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
+import java.util.UUID;
+
 import org.json.JSONArray;
+import org.json.JSONObject;
 
 
 public class HTMLFormDataStore {
@@ -106,6 +120,7 @@ public class HTMLFormDataStore {
             if (!keepFormOpen) {
                 formWebViewActivity.finish();
                 if (status.equals("complete")) {
+
                     Toast.makeText(formWebViewActivity, formWebViewActivity.getString(R.string.info_form_data_save_success), Toast.LENGTH_SHORT).show();
                     RealTimeFormUploader.getInstance().uploadAllCompletedForms(formWebViewActivity.getApplicationContext());
                 }
@@ -298,5 +313,68 @@ public class HTMLFormDataStore {
 
     public boolean isMedicalRecordNumberRequired(){
         return settingController.isMedicalRecordNumberRequiredDuringRegistration();
+    }
+
+    @JavascriptInterface
+    public void checkForPossibleFormDuplicate(String formUuid, String encounterDateTime, String patientUuid,String encounterPayLoad) throws FormController.FormDataFetchException, JSONException {
+        JSONObject mainObject = new JSONObject(encounterPayLoad);
+        JSONObject encounterObject = mainObject.getJSONObject("encounter");
+        if(!(encounterObject.has("encounter.encounter_datetime"))) {
+            List<FormData> allFormData = new ArrayList<FormData>( );
+            allFormData = formController.getAllFormDataByPatientUuid(patientUuid, Constants.STATUS_INCOMPLETE);
+            for (FormData formData : allFormData) {
+                Date encounterDate = formData.getEncounterDate( );
+                String formDataUuid = formData.getTemplateUuid( );
+
+                final String dateFormat = "dd-MM-yyyy";
+
+                SimpleDateFormat newDateFormat = new SimpleDateFormat("dd-MM-yy HH:mm:ss");
+                Date d = null;
+                try {
+                    d = newDateFormat.parse(newDateFormat.format(encounterDate));
+                } catch (ParseException e) {
+                    e.printStackTrace( );
+                }
+                newDateFormat.applyPattern(dateFormat);
+                String convertedEncounterDate = newDateFormat.format(d);
+
+                if (convertedEncounterDate.equals(encounterDateTime) && formDataUuid.equals(formUuid)) {
+                    formWebViewActivity.showWarningDialog( );
+                    break;
+                }
+            }
+        }
+    }
+
+    @JavascriptInterface
+    public boolean getDefaultEncounterLocationSetting(){
+        SharedPreferences preferences = PreferenceManager.getDefaultSharedPreferences(formWebViewActivity.getApplicationContext());
+        String defaultLocationName = preferences.getString("defaultEncounterLocation",getStringResource("no_default_encounter_location"));
+        String defaultValue = getStringResource("no_default_encounter_location");
+        if(defaultLocationName.equals(defaultValue)){
+            return false;
+        }else{
+            return true;
+        }
+    }
+
+    @JavascriptInterface
+    public String getDefaultEncounterLocationPreference() throws LocationController.LocationLoadException {
+        SharedPreferences preferences = PreferenceManager.getDefaultSharedPreferences(formWebViewActivity.getApplicationContext());
+        String defaultLocationName = preferences.getString("defaultEncounterLocation",getStringResource("no_default_encounter_location"));
+        String defaultValue = getStringResource("no_default_encounter_location");
+        List<Location> defaultLocation = new ArrayList<Location>();
+        List<Location> locations = new ArrayList<Location>();
+
+        locations = locationController.getAllLocations();
+        if(!defaultLocationName.equals(defaultValue)){
+             for(Location loc:locations) {
+                 if(Integer.toString(loc.getId()).equals(defaultLocationName)) {
+                     defaultLocation.add(loc);
+                 }
+             }
+            return JSONValue.toJSONString(defaultLocation);
+        }
+        return JSONValue.toJSONString(locations);
     }
 }

@@ -16,8 +16,11 @@ import com.muzima.api.model.Observation;
 import com.muzima.api.model.Patient;
 import com.muzima.controller.ConceptController;
 import com.muzima.controller.EncounterController;
+import com.muzima.controller.FormController;
+import com.muzima.controller.LocationController;
 import com.muzima.controller.ObservationController;
 import com.muzima.controller.PatientController;
+import com.muzima.controller.ProviderController;
 import org.json.JSONException;
 import org.junit.Before;
 import org.junit.Test;
@@ -48,6 +51,7 @@ import static org.mockito.MockitoAnnotations.initMocks;
 @RunWith(RobolectricTestRunner.class)
 @Config(manifest= Config.NONE)
 public class HTMLFormObservationCreatorTest {
+
     private HTMLFormObservationCreator htmlFormObservationCreator;
 
     @Mock
@@ -61,6 +65,15 @@ public class HTMLFormObservationCreatorTest {
 
     @Mock
     private ObservationController observationController;
+
+    @Mock
+    private LocationController locationController;
+
+    @Mock
+    private ProviderController providerController;
+
+    @Mock
+    private FormController formController;
 
     @Mock
     private Patient patient;
@@ -82,7 +95,7 @@ public class HTMLFormObservationCreatorTest {
     @Before
     public void setUp() throws PatientController.PatientLoadException, ConceptController.ConceptFetchException {
         initMocks(this);
-        htmlFormObservationCreator = new HTMLFormObservationCreator(patientController, conceptController, encounterController, observationController);
+        htmlFormObservationCreator = new HTMLFormObservationCreator(null);
 
         when(patientController.getPatientByUuid("9090900-asdsa-asdsannidj-qwnkika")).thenReturn(patient);
 

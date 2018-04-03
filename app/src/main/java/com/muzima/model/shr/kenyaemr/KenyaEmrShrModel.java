@@ -15,13 +15,7 @@ import java.util.List;
 import java.util.Map;
 
 @JsonInclude(JsonInclude.Include.NON_NULL)
-@JsonPropertyOrder({
-    "PATIENT_IDENTIFICATION",
-    "NEXT_OF_KIN",
-    "HIV_TEST",
-    "IMMUNIZATION",
-    "CARD_DETAILS"
-})
+
 public class KenyaEmrShrModel {
 
     @JsonProperty("PATIENT_IDENTIFICATION")
@@ -120,4 +114,6 @@ public class KenyaEmrShrModel {
     public void setAdditionalProperty(String name, Object value) {
         this.additionalProperties.put(name, value);
     }
+
+
 }

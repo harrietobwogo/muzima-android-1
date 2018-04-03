@@ -75,7 +75,7 @@ public class ObservationParserUtility {
         return encounter;
     }
 
-    public Concept getConceptEntity(String rawConceptName) throws ConceptController.ConceptFetchException,
+    public Concept getConceptEntity(String rawConceptName, boolean isCoded) throws ConceptController.ConceptFetchException,
             ConceptController.ConceptParseException{
         String conceptName = getConceptName(rawConceptName);
         if(StringUtils.isEmpty(conceptName)){
@@ -88,7 +88,13 @@ public class ObservationParserUtility {
         }
         Concept observedConcept = conceptController.getConceptByName(conceptName);
         if (observedConcept == null) {
-            observedConcept = buildDummyConcept(conceptName);
+            String conceptId = getConceptId(rawConceptName);
+            int intConceptId = Integer.parseInt(conceptId);
+            if(intConceptId >0){
+                observedConcept = buildDummyConcept(intConceptId, conceptName,isCoded);
+            } else {
+                observedConcept = buildDummyConcept(conceptName,isCoded);
+            }
             newConceptList.add(observedConcept);
         }
         return observedConcept;
@@ -102,11 +108,11 @@ public class ObservationParserUtility {
         }
         Observation observation = new Observation();
         observation.setUuid(getObservationUuid());
-        observation.setConcept(concept);
         observation.setValueCoded(defaultValueCodedConcept());
+
         if (concept.isCoded()) {
             try {
-                Concept valueCoded = getConceptEntity(value);
+                Concept valueCoded = getConceptEntity(value,false);
                 observation.setValueCoded(valueCoded);
             } catch (ConceptController.ConceptParseException e) {
                 throw new ConceptController.ConceptParseException("Could not get value for coded concept '"
@@ -116,13 +122,9 @@ public class ObservationParserUtility {
         } else if (concept.isNumeric()) {
             observation.setValueNumeric(getDoubleValue(value));
         } else {
-            String conceptName = getConceptName(value);
-            if(!(StringUtils.isEmpty(conceptName))){
-                observation.setValueText(conceptName);
-            }else {
-                observation.setValueText(value);
-            }
+            observation.setValueText(value);
         }
+        observation.setConcept(concept);
         return observation;
     }
 
@@ -148,7 +150,11 @@ public class ObservationParserUtility {
         String encountertypeUuid="";
         try{
             Form form = formController.getFormByUuid(formUuid);
-            encounterTypeName=form.getEncounterType().getName();
+            if(form == null){
+                encounterTypeName = "encounterType";
+            } else {
+                encounterTypeName = form.getEncounterType().getName();
+            }
         } catch (FormController.FormFetchException e) {
             e.printStackTrace( );
         }
@@ -211,7 +217,11 @@ public class ObservationParserUtility {
         return provider;
     }
 
-    private Concept buildDummyConcept(String conceptName) {
+    private Concept buildDummyConcept(String conceptName,boolean isCoded) {
+        return buildDummyConcept(0, conceptName, isCoded);
+    }
+
+    private Concept buildDummyConcept(int conceptId, String conceptName, boolean isCoded) {
         Concept concept = new Concept();
         concept.setUuid(CONCEPT_CREATED_ON_PHONE + UUID.randomUUID());
         ConceptName dummyConceptName = new ConceptName();
@@ -219,8 +229,15 @@ public class ObservationParserUtility {
         dummyConceptName.setPreferred(true);
         concept.setConceptNames(asList(dummyConceptName));
         ConceptType conceptType = new ConceptType();
-        conceptType.setName("ConceptTypeCreatedOnThePhone");
+        if(isCoded) {
+            conceptType.setName("Coded");
+        } else {
+            conceptType.setName("ConceptTypeCreatedOnThePhone");
+        }
         concept.setConceptType(conceptType);
+        if(conceptId > 0) {
+            concept.setId(conceptId);
+        }
         return concept;
     }
 
@@ -238,6 +255,17 @@ public class ObservationParserUtility {
             return peek.split("\\^")[1];
         }
         return "";
+    }
+
+    private static String getConceptId(String peek) {
+        if (!StringUtils.isEmpty(peek) && peek.split("\\^").length > 1) {
+            return peek.split("\\^")[0];
+        }
+        return "";
+    }
+
+    public static boolean isFormattedAsConcept(String peek) {
+        return !StringUtils.isEmpty(peek) && peek.split("\\^").length > 1;
     }
 
     private String getEncounterUUID() {
